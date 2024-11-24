@@ -1,0 +1,141 @@
+//Code for processing the data and dispalying it with processing tool
+
+import processing.serial.*; // Library for serial communication
+import java.awt.event.KeyEvent;
+import java.io.IOException;
+
+// Serial communication object
+Serial myPort;
+
+// Variables for data processing
+String angle = "";
+String distance = "";
+String data = "";
+String objectStatus;
+float pixelDistance;
+int iAngle, iDistance;
+int index1 = 0;
+int index2 = 0;
+
+void setup() {
+  size(1200, 800); // ***CHANGE THIS TO YOUR SCREEN RESOLUTION***
+  smooth();
+  myPort = new Serial(this, "COM4", 9600); // Serial communication setup
+  myPort.bufferUntil('.'); // Read data up to the '.' character
+}
+
+void draw() {
+  // Simulating motion blur and slow fade
+  noStroke();
+  fill(0, 4); 
+  rect(0, 0, width, height - height * 0.065);
+
+  // Set fill color for elements
+  fill(98, 245, 31);
+
+  // Drawing sonar and related visuals
+  drawSonar();
+  drawLine();
+  drawObject();
+  drawText();
+}
+
+void serialEvent(Serial myPort) { 
+  // Read serial data up to the '.' character
+  data = myPort.readStringUntil('.');
+  if (data != null && data.length() > 1) {
+    data = data.substring(0, data.length() - 1); // Remove the '.' character
+    index1 = data.indexOf(","); // Find the ',' separator
+    
+    if (index1 > 0) {
+      // Extract and convert angle and distance values
+      angle = data.substring(0, index1);
+      distance = data.substring(index1 + 1);
+      iAngle = int(angle);
+      iDistance = int(distance);
+    }
+  }
+}
+
+void drawSonar() {
+  pushMatrix();
+  translate(width / 2, height - height * 0.074); // Move origin to center-bottom
+  noFill();
+  strokeWeight(2);
+  stroke(98, 245, 31);
+
+  // Draw sonar arcs
+  for (float factor : new float[] { 0.0625, 0.27, 0.479, 0.687 }) {
+    arc(0, 0, width - width * factor, width - width * factor, PI, TWO_PI);
+  }
+
+  // Draw angle lines
+  for (int angle : new int[] { 30, 60, 90, 120, 150 }) {
+    line(0, 0, (-width / 2) * cos(radians(angle)), (-width / 2) * sin(radians(angle)));
+  }
+  line(-width / 2, 0, width / 2, 0);
+  popMatrix();
+}
+
+void drawObject() {
+  pushMatrix();
+  translate(width / 2, height - height * 0.074); // Move origin to center-bottom
+  strokeWeight(9);
+  stroke(255, 10, 10); // Red for objects
+
+  // Convert distance to pixels and limit to 40 cm
+  pixelDistance = iDistance * ((height - height * 0.1666) * 0.025);
+  if (iDistance < 40) {
+    line(
+      pixelDistance * cos(radians(iAngle)), 
+      -pixelDistance * sin(radians(iAngle)),
+      (width - width * 0.505) * cos(radians(iAngle)), 
+      -(width - width * 0.505) * sin(radians(iAngle))
+    );
+  }
+  popMatrix();
+}
+
+void drawLine() {
+  pushMatrix();
+  strokeWeight(9);
+  stroke(30, 250, 60); // Green for line
+  translate(width / 2, height - height * 0.074); // Move origin to center-bottom
+  line(0, 0, (height - height * 0.12) * cos(radians(iAngle)), -(height - height * 0.12) * sin(radians(iAngle)));
+  popMatrix();
+}
+
+void drawText() {
+  pushMatrix();
+
+  // Determine object status
+  objectStatus = (iDistance > 40) ? "Out of Range" : "In Range";
+
+  // Background for text
+  fill(0, 0, 0);
+  noStroke();
+  rect(0, height - height * 0.0648, width, height);
+
+  // Set text color and sizes
+  fill(98, 245, 31);
+  textSize(25);
+  text("10cm", width - width * 0.3854, height - height * 0.0833);
+  text("20cm", width - width * 0.281, height - height * 0.0833);
+  text("30cm", width - width * 0.177, height - height * 0.0833);
+  text("40cm", width - width * 0.0729, height - height * 0.0833);
+
+  // Display dynamic data
+  textSize(40);
+  text("Real-Time Sonar", width - width * 0.875, height - height * 0.0277);
+  text("Angle: " + iAngle + " °", width - width * 0.48, height - height * 0.0277);
+
+  // Display angles for sonar
+  textSize(25);
+  for (int angle : new int[] { 30, 60, 90, 120, 150 }) {
+    float x = (width / 2) * cos(radians(angle));
+    float y = -(width / 2) * sin(radians(angle));
+    text(angle + "°", width / 2 + x, height - height * 0.074 + y);
+  }
+
+  popMatrix();
+}
